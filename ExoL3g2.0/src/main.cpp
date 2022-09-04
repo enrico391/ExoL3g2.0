@@ -1,16 +1,10 @@
 #include <Arduino.h>
-
-
-//library mpu
-
-//library mcp2515
 #include <SPI.h>
 #include <mcp2515.h>
 #include <motorAK.h>
 #include <PID.h>
 #include <controller.h>
 #include <svmML.h>
-//library wire
 #include <Wire.h>
 
 //struct can_frame canMsg;
@@ -42,9 +36,23 @@ int a = 0;
 bool button = true;
 int end = 0;
 
+//variables of speed, position and torque
+float speed;
+float position;
+float torque;
+
 Controller ct;
 
-
+void joystickMode(byte direction);
+void checkModeBluetooth(byte mode);
+void freeMode();
+void gyroMode();
+void PIDmode(int posHip, int posKnee);
+void motorPosition(int typeMotor,int posMotor, int speedMotor);
+void setMode(int posKnee, int posHip);
+void writeBluetooth(String message);
+String readMessageBluetooth();
+void logStatus(int level);
 
 
 ///////////////////////////////////////////////END///////////////////////////////////////////////////
@@ -60,32 +68,28 @@ void setup() {
 
 }
 
-
-
-
 void loop() {
-  // put your main code here, to run repeatedly:
   //if controllo bluetooth
-  if(){ //pin bluetooth attivo --> vuol dire che telefono collegato
+  if(1==1){ //pin bluetooth attivo --> vuol dire che telefono collegato
     readMessageBluetooth();
     //condizioni
   }else{
     //mode con controller 
-    switch ct.getMode(){
+    switch (ct.getMode()){
       case 1:
-        gyroMode();
+        gyroMode();  // attraverso ML attiva e disattiva motori e curva 
         break;
       case 2:
-        joystickMode(ct.getDirection());
+        joystickMode(ct.getDirectionY());
         break;
       case 3:
-        freeMode();
+        freeMode(); // disabilità motori per movimento libero
         break;
       case 5:
-        calibrationMode();
+        calibrationMode(); // attraverso controller calibra i motori
         break;
       case 6:
-        pauseMode();
+        //pauseMode();
         break;
       default:
         break;
@@ -97,11 +101,17 @@ void loop() {
 }
 
 
-//functions
 
+
+
+///////////////////////functions////////////////////////////////////////
+
+//function with joystick and move motor
 void joystickMode(byte direction){
     if(direction==0){
       //fermo
+      freeMode();
+
     }
     else if(direction == 1){
       // avanti
@@ -112,31 +122,36 @@ void joystickMode(byte direction){
     }
 }
 
-void checkModeBluetooth(byte mode){  // per controllare modalità
-    switch mode:
-      case 1:
+// per controllare modalità
+void checkModeBluetooth(byte mode){  
+    switch (mode){
+        case 1:
         freeMode();
         break;
       case 2:
         gyroMode();
         break;
       case 3:
-        PIDmode();
+        //PIDmode();
         break;
       default:
         break;
+    }
 }
 
-void freeMode(){ // mode libera
-    sendToMotor();
-    sendToMotor();
+// mode libera disabilità motori
+void freeMode(){ 
+    disableMotor(1);
+    disableMotor(2);
 }
 
-void gyroMode(){ // mode with gyroscope
+// mode with gyroscope
+void gyroMode(){ 
 
 }
 
-void PIDmode(int posHip, int posKnee){  // controllo motori con PID
+// controllo motori con PID !!probabile non serva!!
+void PIDmode(int posHip, int posKnee){  
     PidControl pidHip;
     PidControl pidKnee;
 
@@ -158,20 +173,23 @@ void PIDmode(int posHip, int posKnee){  // controllo motori con PID
     */
 }
 
-void motorPosition(int typeMotor,int posMotor, int speedMotor){ //controllare motori durante la marcia
+//controllare motori durante la marcia
+void motorPosition(int typeMotor,int posMotor, int speedMotor){ 
     sendToMotor(typeMotor,posMotor,speedMotor,1,1,1);
 }
 
-
-void setMode(int posKnee, int posHip){ // settare posizione iniziale
+// settare posizione iniziale
+void setMode(int posKnee, int posHip){ 
     sendToMotor(1,posHip,50,1,1,1);
     sendToMotor(2,posKnee,50,1,1,1);
 }
 
+//send messages to app
 void writeBluetooth(String message){
   
 }
 
+//read messages from App
 String readMessageBluetooth(){
     if(Serial3.available()){
       String mode = Serial3.read();
@@ -179,7 +197,8 @@ String readMessageBluetooth(){
     //return byte ;
 }
 
-void logStatus(int level){ //print value in serial
+//print value in serial
+void logStatus(int level){ 
     switch (level){
       case 1:
 
@@ -190,4 +209,29 @@ void logStatus(int level){ //print value in serial
     }
       
 
+}
+
+// function to calibrate initial position
+void calibrationMode(){
+  int current_ID;
+  read_fromMotor(current_ID,position,speed,torque);
+  if(current_ID){
+    if(ct.getDirectionX()){
+      sendToMotor(current_ID,position+1,10,0,0,0); // ultimi 4 valori da testare
+    }
+    else if(ct.getDirectionX()==2){
+      sendToMotor(current_ID,position-1,10,0,0,0); // ultimi 4 valori da testare
+    }else{
+      //nulla sta fermo
+    }
+  }else{
+    if(ct.getDirectionY()){
+      sendToMotor(current_ID,position+1,10,0,0,0); // ultimi 4 valori da testare
+    }
+    else if(ct.getDirectionY()==2){
+      sendToMotor(current_ID,position-1,10,0,0,0); // ultimi 4 valori da testare
+    }else{
+      //nulla sta fermo
+    }
+  }
 }

@@ -34,6 +34,7 @@ and a contents of `src/main.c`:
 #include <motorAK.h>
 #include <PID.h>
 #include <controller.h>
+#include <svmML.h>
 int main (void)
 {
   ...

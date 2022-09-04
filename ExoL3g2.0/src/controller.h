@@ -109,11 +109,9 @@ class Controller{
 
         }
     }
-    int getDirection(){
+    int getDirectionX(){
         int val_x = analogRead(j_x);
-        
         val_x = map(val_x,0,1023,-500,500);
-        
         if(val_x>-30 && val_x<30){
           val_x = 0;
         }
@@ -126,6 +124,19 @@ class Controller{
           return 0;
         }
     }
-
+    int getDirectionY(){
+        int val_y = analogRead(j_y);
+        val_y = map(val_y,0,1023,-500,500);
+        if(val_y>-30 && val_y<30){
+          val_y = 0;
+        }
+        if(val_y>0){
+          return 1;
+        }else if(val_y<0){
+          return 2;
+        }else{
+          return 0;
+        }
+    }
 };
 
