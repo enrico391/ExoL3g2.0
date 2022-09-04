@@ -4,9 +4,6 @@
 #include "I2Cdev.h"
 #include "MPU6050.h"
 
-#include <SPI.h>
-#include <SD.h>
-
 
 // Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation
 // is used in I2Cdev.h

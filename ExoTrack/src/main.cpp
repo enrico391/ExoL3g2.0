@@ -244,6 +244,4 @@ void loop() {
       Serial.println("error opening dataSet.txt");
     }
     dataSet.close();
-    
-    
 }
