@@ -75,6 +75,7 @@ void disableMotor(int mot_id){
   cf.data[5] = 0xFF;
   cf.data[6] = 0xFF;
   cf.data[7] = 0xFD;
+  mcp2515.sendMessage(&cf);
 }
 
 void setZeroMotor(int mot_id){
@@ -90,6 +91,7 @@ void setZeroMotor(int mot_id){
   cf.data[5] = 0xFF;
   cf.data[6] = 0xFF;
   cf.data[7] = 0xFE;
+  mcp2515.sendMessage(&cf);
 }
 
 

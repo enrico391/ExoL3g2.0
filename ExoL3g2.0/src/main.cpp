@@ -53,6 +53,7 @@ void setMode(int posKnee, int posHip);
 void writeBluetooth(String message);
 String readMessageBluetooth();
 void logStatus(int level);
+void calibrationMode();
 
 
 ///////////////////////////////////////////////END///////////////////////////////////////////////////
