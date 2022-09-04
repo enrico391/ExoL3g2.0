@@ -1,0 +1,7 @@
+"index","timeReal","AccYHip","GyroYHip","AccYKnee","GyroYKnee","Occupancy"
+int++ , millis(), Accx , GyroX , AccY , GyroY ,0 o 1
+  
+
+
+1 fermoo
+0 move
