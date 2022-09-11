@@ -191,7 +191,7 @@ void loop() {
         // display tab-separated accel/gyro x/y/z values
         Serial.print("MPU 1 :");
         //Serial.print(" ");Serial.println(ax);  // !!
-        Serial.print(" ");Serial.print(ay); 
+        Serial.print(" ");Serial.print(ay/100); 
         //Serial.print(" ");Serial.print(az); 
         //Serial.print(" ");Serial.print(gx); 
         //Serial.print(" ");Serial.print(gy); 
@@ -199,7 +199,7 @@ void loop() {
         
         //Serial.print("MPU 2 :");
         //Serial.print(" ");Serial.println(ax2); 
-        Serial.print(" ");Serial.println((ay2+4400)); // !!
+        Serial.print(" ");Serial.println((ay2/100)); // !!
         //Serial.print(" ");Serial.println(az2); 
         //Serial.print(" ");Serial.print(gx2); 
         //Serial.print(" ");Serial.print(gy2);
@@ -249,7 +249,7 @@ void loop() {
     xAnca = SD.open("xAnca.txt", FILE_WRITE);
     if (xAnca) {
       //myFile.println("MPU 1: ");
-      xAnca.print(ay);
+      xAnca.print((ay/100));
       xAnca.println(" , ");
       }
     else {
@@ -261,7 +261,7 @@ void loop() {
     yGinocchio = SD.open("yGin.txt", FILE_WRITE);
     if (yGinocchio) {
       //myFile.println("MPU 2: ");
-      yGinocchio.print(ay2);
+      yGinocchio.print((ay2/100));
       yGinocchio.println(" , ");
       }
     else {

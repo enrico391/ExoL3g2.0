@@ -4,8 +4,8 @@ from microlearn.offloader import Offload
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC # Or you can use LinearSVC
 # Parsing the dataset
-dataset = pd.read_csv('DATASET_InPiedi.txt', sep=',', header=0)
-X_train = dataset.loc[:, 'AccYHip':'GyroYKnee'].to_numpy()
+dataset = pd.read_csv('datiSingleMPU_Adafruit.txt', sep=',', header=0)
+X_train = dataset.loc[:, 'Ax':'Az'].to_numpy()
 Y_train = dataset.loc[:, 'Occupancy'].to_numpy()
 # Training the StandardScaler
 ss = StandardScaler()
