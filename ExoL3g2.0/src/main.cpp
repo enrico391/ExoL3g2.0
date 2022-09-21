@@ -2,221 +2,303 @@
 #include <SPI.h>
 #include <mcp2515.h>
 #include <motorAK.h>
-#include <PID.h>
-#include <controller.h>
-#include <svmML.h>
+#include <PID.cpp>
+#include <controller.cpp>
+#include <svmML.cpp>
 #include <Wire.h>
+#include <curves.h>
 
-//struct can_frame canMsg;
+////////////////MPU6050////////////////////
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+Adafruit_MPU6050 mpu;
 
-//MCP2515 mcp2515(10);
+//oggetto per calcolo Machine Learning
+Svm ml_calculator;
 
 
 /////////////////////////////////////////////VARIABLES//////////////////////////////////////////////
-int a0_k = -2246 ;
-int a1_k = -385.9;
-int b1_k = -2508;
-int a2_k = 3512;  
-int b2_k = -1304;  
-int a3_k = -128.2;
-int b3_k = 1141; 
-double w_k = 0.004727;
 
-int a0_h = 3764 ;
-int a1_h = -1869;
-int b1_h = 1134;
-int a2_h = 816.8;  
-int b2_h = -500.7;  
-double w_h = 0.004734;
+//da rivedere
 int hip;
 int knee;
-unsigned long x;
 
-int a = 0;
-bool button = true;
-int end = 0;
+// risultato retta nelle curve camminata per valore x
+unsigned int tempo = 1;
+// x della retta per curve camminata
+float xT = 0;
+// fattore scala per iniziare camminata con curve piccole
+float scala = 0;
+
 
 //variables of speed, position and torque
 float speed;
+float speedKnee;
 float position;
+float positionKnee;
 float torque;
+float torqueKnee;
 
+//oggetto controller per ricevere info su controller mode
 Controller ct;
 
+
+/*
+mode 1 --> freeMode
+mode 2 --> gyroMode
+mode 3 --> PIDMode (forse no)
+mode 5 --> calibrationMode
+*/
+
+
+////////////////////////////FUNCTIONS////////////////////////////////////////
+
+/* declaration of functions
 void joystickMode(byte direction);
+
 void checkModeBluetooth(byte mode);
+//mode libera con motori disable e libertà di movimento
 void freeMode();
+//mode con giroscopio e algoritmo di machine learning
 void gyroMode();
+//mode PID forse non serve
 void PIDmode(int posHip, int posKnee);
-void motorPosition(int typeMotor,int posMotor, int speedMotor);
+//funzione per settare posizione motori |||forse non necessaria
 void setMode(int posKnee, int posHip);
+//funzione per scrivere messaggi ad EXO APP
 void writeBluetooth(String message);
+//funzione per leggere stringhe da EXO APP 
 String readMessageBluetooth();
+//funzione per print info su mode corrente
 void logStatus(int level);
+// funzione per calibrare posizione con joystick
 void calibrationMode();
+//funzione per resettare valori per curve camminata
+void resetValues(float *scale, unsigned int *tempo, float *xT);
+*/
 
 
-///////////////////////////////////////////////END///////////////////////////////////////////////////
-
-void setup() {
-  //define pin led controller 
-  //define serial
-  Serial.begin(9600);
-  Serial3.begin(9600); // --> serial per bluetooth 
-  initDriverBUS();
-  //define pin bluetooth
-  //define other things
-
-}
-
-void loop() {
-  //if controllo bluetooth
-  if(1==1){ //pin bluetooth attivo --> vuol dire che telefono collegato
-    readMessageBluetooth();
-    //condizioni
-  }else{
-    //mode con controller 
-    switch (ct.getMode()){
-      case 1:
-        gyroMode();  // attraverso ML attiva e disattiva motori e curva 
-        break;
-      case 2:
-        joystickMode(ct.getDirectionY());
-        break;
-      case 3:
-        freeMode(); // disabilità motori per movimento libero
-        break;
-      case 5:
-        calibrationMode(); // attraverso controller calibra i motori
-        break;
-      case 6:
-        //pauseMode();
-        break;
-      default:
-        break;
-    }
-  }
-  
-  ct.checkModeController();
-  Serial.println(ct.getMode());
-}
-
-
-
-
-
-///////////////////////functions////////////////////////////////////////
-
-//function with joystick and move motor
-void joystickMode(byte direction){
-    if(direction==0){
-      //fermo
-      freeMode();
-
-    }
-    else if(direction == 1){
-      // avanti
-      
-
-    }else if(direction == 2){
-      // indietro
-    }
-}
-
-// per controllare modalità
-void checkModeBluetooth(byte mode){  
-    switch (mode){
-        case 1:
-        freeMode();
-        break;
-      case 2:
-        gyroMode();
-        break;
-      case 3:
-        //PIDmode();
-        break;
-      default:
-        break;
-    }
-}
-
-// mode libera disabilità motori
+/// @brief mode that disable motors 
 void freeMode(){ 
     disableMotor(1);
     disableMotor(2);
 }
 
-// mode with gyroscope
-void gyroMode(){ 
-
+//funzione per resettare valori iniziali variabili curve
+void resetValues(float *scale, unsigned int *tempo, float *xT){
+  *tempo = 0;
+  *xT = 0;
+  *scale = 0.0;
 }
+
+
+/// @brief mode with the use of joystick
+void joystickMode(byte direction){
+  if(direction==0){
+    //va avanti con impostazione scale definita negli altri due casi
+  }
+  else if(direction == 1)
+  {
+    //avanti
+    scala += 0.001;
+    
+  }
+  else if(direction == 2)
+  {
+    //indietro
+    if(scala > 0) scala -= 0.001;
+    
+  }
+  xT++;
+  tempo = 1.5*xT;
+  
+
+  sendToMotor(1,getCurveAnca(tempo,scala),10,2,2,2);
+  sendToMotor(2,getCurveGinocchio(tempo,scala),10,2,2,2);
+
+  Serial.print(getCurveGinocchio(tempo,scala));
+  Serial.print(" ");
+  Serial.println(getCurveAnca(tempo,scala));
+}
+
+
+
+// mode with gyroscope
+void gyroMode(){
+  //ottiene valori da giroscopio
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  //inserisce valori gyroscopio all'interno dell'array per utilizzarlo nell'algoritmo di ML
+  int data[4];
+  data[0] = a.acceleration.x;
+  data[1] = a.acceleration.y;
+  data[2] = g.gyro.x; 
+  Serial.print("Data ML : ");
+  Serial.print(ml_calculator.motion(data));
+  Serial.print("  ");
+
+  //calcolo del fattore c Machine Learning
+  if(ml_calculator.motion(data))
+  {
+    //abilità motori solo prima volta che entra dentro al ciclo, ogni volta che riparte da zero 
+    if(xT == 0){
+      enterMotorMode(1);
+      enterMotorMode(2);
+    }
+
+    //muovi motori secondo curva sinosoidale
+    //aggiorna valori scala e tempo
+    scala += 0.001;
+    tempo = 1.5*xT;
+    //print delle curve
+    Serial.print(getCurveGinocchio(tempo,scala));
+    Serial.print(" ");
+    Serial.print(getCurveAnca(tempo,scala));
+    Serial.print(" ");
+    //send position to the motors 
+    sendToMotor(1,getCurveAnca(tempo,scala),10,2,2,2);
+    sendToMotor(2,getCurveGinocchio(tempo,scala),10,2,2,2);
+    //incrementa x della funzione
+    xT++;
+  }
+  else
+  {
+    //fermo non fare nulla 
+    //disabilità motori
+    disableMotor(1);
+    disableMotor(2);
+    //funzione che resetta valori delle curve
+    resetValues(&scala, &tempo, &xT);
+    //due strade da prendere :
+    //1) disableMotor e una volta che c soddisfa condizione vera impostare 0 motor nella current pos; 
+    //2) quando c non soddisfa condizioni riportare motori su valore 0 preimpostato con una velocità ridotta per poi disabilitare motori
+
+    //TODO forse meglio prima strada per fattore comodità dal momento che una volta disabilitati i motori è possibile fare movimento libero
+  }
+}
+
+
+void gyroMode_Try(){
+  //ottiene valori da giroscopio
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  //inserisce valori gyroscopio all'interno dell'array per utilizzarlo nell'algoritmo di ML
+  int data[4];
+  data[0] = a.acceleration.x;
+  data[1] = a.acceleration.y;
+  data[2] = g.gyro.x; 
+  Serial.print("Data ML : ");
+  Serial.print(ml_calculator.motion(data));
+  Serial.print("  ");
+
+  //calcolo del fattore c Machine Learning
+  if(ml_calculator.motion(data))
+  {
+    //abilità motori solo prima volta che entra dentro al ciclo, ogni volta che riparte da zero 
+    if(xT == 0){
+      enterMotorMode(1);
+      enterMotorMode(2);
+      //setZeroMotor(1);
+      //setZeroMotor(2);
+    }
+
+    //muovi motori secondo curva sinosoidale
+    //aggiorna valori scala e tempo
+    scala += 0.001;
+    tempo = 1.5*xT;
+    //print delle curve
+    Serial.print(getCurveGinocchio(tempo,scala));
+    Serial.print(" ");
+    Serial.print(getCurveAnca(tempo,scala));
+    Serial.print(" ");
+    //send position to the motors 
+    sendToMotor(1,getCurveAnca(tempo,scala),10,2,2,2);
+    sendToMotor(2,getCurveGinocchio(tempo,scala),10,2,2,2);
+    //incrementa x della funzione
+    xT++;
+  }
+  else
+  {
+    //fermo non fare nulla 
+    //disabilità motori
+    disableMotor(1);
+    disableMotor(2);
+    //funzione che resetta valori delle curve
+    resetValues(&scala, &tempo, &xT);
+    //due strade da prendere :
+    //1) disableMotor e una volta che c soddisfa condizione vera impostare 0 motor nella current pos; 
+    //2) quando c non soddisfa condizioni riportare motori su valore 0 preimpostato con una velocità ridotta per poi disabilitare motori
+
+    //TODO forse meglio prima strada per fattore comodità dal momento che una volta disabilitati i motori è possibile fare movimento libero
+  }
+}
+
+
+/// @brief mode to check the mode via bluetooth
+/// @param mode current mode
+void checkModeBluetooth(byte mode){  
+  if(mode == 1) freeMode();
+  if(mode == 2) gyroMode();
+  if(mode == 3); //;
+}
+
 
 // controllo motori con PID !!probabile non serva!!
 void PIDmode(int posHip, int posKnee){  
-    PidControl pidHip;
-    PidControl pidKnee;
+  //TODO
+  PidControl pidHip;
+  PidControl pidKnee;
 
-    x = 10*(a);
-    a++;
-    //curve
-    hip =  (a0_h + a1_h*cos(x*w_h) + b1_h*sin(x*w_h) + a2_h*cos(2*x*w_h) + b2_h*sin(2*x*w_h));
-    knee = a0_k + a1_k*cos(x*w_k) + b1_k*sin(x*w_k) + a2_k*cos(2*x*w_k) + b2_k*sin(2*x*w_k) + a3_k*cos(3*x*w_k) + b3_k*sin(3*x*w_k);
+  //calcolo PID
+  long currT = micros();
+  int speedKnee = pidKnee.calculate(currT, knee, posKnee); 
+  int speedHip = pidHip.calculate(currT, hip, posHip);
 
-    //calcolo PID
-    long currT = micros();
-    int speedKnee = pidKnee.calculate(currT, knee, posKnee); 
-    int speedHip = pidHip.calculate(currT, hip, posHip);
-    motorPosition(1,speedHip,50);
-    motorPosition(2,speedKnee,50);// controllare velocità e posizione
-
-    /*
-      controllo pid utilizzato in gyroMode, quando si stoppa x torna a 0 e...
-    */
+  //DA RIVEDERE 
+  //controllo pid utilizzato in gyroMode, quando si stoppa x torna a 0 e...
 }
 
-//controllare motori durante la marcia
-void motorPosition(int typeMotor,int posMotor, int speedMotor){ 
-    sendToMotor(typeMotor,posMotor,speedMotor,1,1,1);
-}
-
-// settare posizione iniziale
-void setMode(int posKnee, int posHip){ 
-    sendToMotor(1,posHip,50,1,1,1);
-    sendToMotor(2,posKnee,50,1,1,1);
-}
 
 //send messages to app
 void writeBluetooth(String message){
   
 }
 
+
 //read messages from App
 String readMessageBluetooth(){
-    if(Serial3.available()){
-      String mode = Serial3.read();
-    }
-    //return byte ;
+  if(Serial2.available()){
+    //String mode = Serial2.read();
+  }
+  //return byte ;
+  return " ";
 }
+
 
 //print value in serial
 void logStatus(int level){ 
-    switch (level){
-      case 1:
-
-        break;
-      case 2:
-
-        break;
-    }
-      
-
+  //use of Controller
+  if(level == 0){
+    Serial.print("    //   ");
+    Serial.print(ct.getMode());
+    Serial.print("  X direction : ");
+    Serial.print(ct.getDirectionX());
+    Serial.print("  Y direction : ");
+    Serial.print(ct.getDirectionY());
+    Serial.println(" ");
+  } 
+  //TODO
 }
+
 
 // function to calibrate initial position
 void calibrationMode(){
   int current_ID;
   read_fromMotor(current_ID,position,speed,torque);
-  if(current_ID){
+  //se id che riceve da messaggio CAN è 1 aggiorna pos motore 1 
+  if(current_ID == 1){
     if(ct.getDirectionX()){
       sendToMotor(current_ID,position+1,10,0,0,0); // ultimi 4 valori da testare
     }
@@ -225,7 +307,10 @@ void calibrationMode(){
     }else{
       //nulla sta fermo
     }
-  }else{
+  }
+
+  //se id che riceve da messaggio CAN è 2 aggiorna pos motore 2 
+  if(current_ID == 2){
     if(ct.getDirectionY()){
       sendToMotor(current_ID,position+1,10,0,0,0); // ultimi 4 valori da testare
     }
@@ -236,3 +321,85 @@ void calibrationMode(){
     }
   }
 }
+
+
+/// @brief mode to set the 0 position USE in INTERRUPT
+void resetZeroPositionMotor(){
+  //insert 0 position only if the current mode is calibrationMode
+  if(ct.getMode() == 5){
+    setZeroMotor(1);
+    setZeroMotor(2);
+  }
+}
+
+/// @brief mode that set the initial parameter every time mode changed
+void transictionMode(){
+  //when the button mode is clicked, check if the current mode is 1(gyroMode) and reset the values for the 2 mode(Joystick)
+  if(ct.getMode() == 1){
+    resetValues(&scala, &tempo, &xT);
+  }
+}
+
+
+///////////////////////////////////////////////END///////////////////////////////////////////////////
+
+void setup() {
+  Serial.begin(9600);
+  //parte MPU 
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+
+  Serial.println("MPU6050 Found!");
+
+  //setting gyroscope and accelerometer 
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+
+  mpu.setFilterBandwidth(MPU6050_BAND_5_HZ);
+
+  Serial.println("");
+  delay(100);
+
+  //TODO define pin led controller 
+  //define serial
+  
+  Serial8.begin(9600); // --> serial per bluetooth 
+  initDriverBUS();
+  //define pin bluetooth
+  //define other things
+  
+  //interrupt when button Joystick is clicked, it is used to set the 0 position
+  pinMode(j_bt, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(j_bt), resetZeroPositionMotor, CHANGE);
+
+  //interrupt when button Mode is clicked, it is used to set the initial parameter for the next Mode
+  pinMode(bt2, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(bt1), transictionMode, CHANGE);
+}
+
+
+void loop() {
+  //if controllo bluetooth
+  //if(1==1){ //pin bluetooth attivo --> vuol dire che telefono collegato
+    //readMessageBluetooth();
+    //Serial.print(ct.getDirectionX());
+    //condizioni
+  //}else{
+    //mode con controller 
+    if(ct.getMode() == 1) freeMode(); //mode with motors disable
+    if(ct.getMode() == 2) gyroMode(); //attraverso ML attiva e disattiva motori e curva 
+    if(ct.getMode() == 3) joystickMode(ct.getDirectionY()); // utilizza joystick per muovere EXO 
+    if(ct.getMode() == 5) calibrationMode(); // attraverso controller calibra i motori
+  //}
+
+  
+  ct.checkModeController();
+  logStatus(0);
+}
+
+

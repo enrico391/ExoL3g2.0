@@ -4,16 +4,16 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
- #define P_MIN -12.5f
- #define P_MAX 12.5f
- #define V_MIN -20.94f
- #define V_MAX 20.94f
- #define KP_MIN 0.0f
- #define KP_MAX 500.0f
- #define KD_MIN 0.0f
- #define KD_MAX 5.0f
- #define T_MIN -24.8f
- #define T_MAX 24.8f
+#define P_MIN -12.5f
+#define P_MAX 12.5f
+#define V_MIN -20.94f
+#define V_MAX 20.94f
+#define KP_MIN 0.0f
+#define KP_MAX 500.0f
+#define KD_MIN 0.0f
+#define KD_MAX 5.0f
+#define T_MIN -24.8f
+#define T_MAX 24.8f
 
 struct can_frame canMsg;
 
@@ -47,8 +47,11 @@ void loop() {
 }
 */
 
+/// @brief method to enable motors
+/// @param mot_id id of motor
 void enterMotorMode(int mot_id){
   struct can_frame cf;
+  
   cf.can_id  = mot_id;
   cf.can_dlc = 8;
   cf.data[0] = 0xFF;
@@ -62,9 +65,12 @@ void enterMotorMode(int mot_id){
   mcp2515.sendMessage(&cf);
 }
 
+/// @brief method to disable motor
+/// @param mot_id id motor
 void disableMotor(int mot_id){
   //motor_id, [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0XFD]
   struct can_frame cf;
+
   cf.can_id  = mot_id;
   cf.can_dlc = 8;
   cf.data[0] = 0xFF;
@@ -78,9 +84,12 @@ void disableMotor(int mot_id){
   mcp2515.sendMessage(&cf);
 }
 
+/// @brief method to set the zero position of the motors
+/// @param mot_id id motor
 void setZeroMotor(int mot_id){
   //(motor_id, [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE])
   struct can_frame cf;
+
   cf.can_id  = mot_id;
   cf.can_dlc = 8;
   cf.data[0] = 0xFF;
@@ -94,8 +103,7 @@ void setZeroMotor(int mot_id){
   mcp2515.sendMessage(&cf);
 }
 
-
-
+/// @brief method to init the mcp2515 to initialize the comunication
 void initDriverBUS(){
   mcp2515.reset();
   mcp2515.setBitrate(CAN_1000KBPS);
@@ -105,27 +113,47 @@ void initDriverBUS(){
   delay(5000);
 }
 
-
+/// @brief method to convert float to a unsigned int 
+/// @param x value
+/// @param x_min value min
+/// @param x_max value max
+/// @param bits bits
+/// @return the number in int 
 int float_to_uint(float x, float x_min, float x_max, int bits){
-    // Converts a float to an unsigned int, given range and number of bits 
-    float span = x_max - x_min;
-    float offset = x_min;
-    unsigned int pgg = 0;
-    if(bits == 12){
-      pgg = (unsigned int) ((x-offset)*4095.0/span);
-    }else if(bits == 16){
-      pgg = (unsigned int) ((x-offset)*65535.0/span);
-    }
-    return pgg;
+  // Converts a float to an unsigned int, given range and number of bits 
+  float span = x_max - x_min;
+  float offset = x_min;
+  unsigned int pgg = 0;
+
+  if(bits == 12){
+    pgg = (unsigned int) ((x-offset)*4095.0/span);
+  }else if(bits == 16){
+    pgg = (unsigned int) ((x-offset)*65535.0/span);
+  }
+
+  return pgg;
 }
 
+/// @brief method to convert int to a float
+/// @param x_int valore in int
+/// @param x_min min value
+/// @param x_max max value
+/// @param bits bits
+/// @return the number in float 
 float uint_to_float(int x_int, float x_min, float x_max, int bits){
-      /// converts unsigned int to float, given range and number of bits ///
-    float span = x_max - x_min;
-    float offset = x_min;
-    return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
+  /// converts unsigned int to float, given range and number of bits ///
+  float span = x_max - x_min;
+  float offset = x_min;
+  return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
 }
 
+/// @brief method to send pos, speed to motors
+/// @param mot_id id motor
+/// @param pos position 
+/// @param vel speed
+/// @param kp 
+/// @param kd 
+/// @param torq 
 void sendToMotor(int mot_id, float pos, float vel, float kp, float kd, float torq){
   struct can_frame cf;
 
@@ -134,6 +162,7 @@ void sendToMotor(int mot_id, float pos, float vel, float kp, float kd, float tor
   unsigned int con_kp = float_to_uint(constrain(kp, KP_MIN, KP_MAX), KP_MIN, KP_MAX, 12);
   unsigned int con_kd = float_to_uint(constrain(kd, KD_MIN, KD_MAX), KD_MIN, KD_MAX, 12);
   unsigned int con_torq = float_to_uint(constrain(torq, T_MIN, T_MAX), T_MIN, T_MAX, 12);
+
   cf.can_id  = mot_id;
   cf.can_dlc = 8;
   cf.data[0] = con_pos>>8;
@@ -147,14 +176,22 @@ void sendToMotor(int mot_id, float pos, float vel, float kp, float kd, float tor
   mcp2515.sendMessage(&cf);
 }
 
+/// @brief method to read value from motor that return with CAN message
+/// @param idMotor 
+/// @param positionCurrent 
+/// @param speedCurrent 
+/// @param torqueCurrent 
 void read_fromMotor(int& idMotor,float& positionCurrent, float& speedCurrent, float& torqueCurrent){
   struct can_frame msg;
+
   if(mcp2515.readMessage(&msg) == MCP2515::ERROR_OK){
     /// unpack ints from can buffer ///
     idMotor = msg.data[0]; //id motor
+
     int p_int = (msg.data[1]<<8)|msg.data[2]; //Motor position data
     int v_int = (msg.data[3]<<4)|(msg.data[4]>>4); // Motor speed data
     int i_int = ((msg.data[4]&0xF)<<8)|msg.data[5]; // Motor torque data
+
     /// convert ints to floats ///
     positionCurrent = uint_to_float(p_int, P_MIN, P_MAX, 16);
     speedCurrent = uint_to_float(v_int, V_MIN, V_MAX, 12);
