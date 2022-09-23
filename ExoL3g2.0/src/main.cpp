@@ -1,3 +1,5 @@
+#define PIN_BLUETOOTH 33
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <mcp2515.h>
@@ -269,7 +271,7 @@ void writeBluetooth(String message){
 
 //read messages from App
 String readMessageBluetooth(){
-  if(Serial2.available()){
+  if(Serial8.available()){
     //String mode = Serial2.read();
   }
   //return byte ;
@@ -278,6 +280,8 @@ String readMessageBluetooth(){
 
 
 //print value in serial
+/// @brief Log that print useful information on monitor
+/// @param level 0 = controller, 1 = APP mode
 void logStatus(int level){ 
   //use of Controller
   if(level == 0){
@@ -289,6 +293,10 @@ void logStatus(int level){
     Serial.print(ct.getDirectionY());
     Serial.println(" ");
   } 
+  //mode with APP
+  if(level == 1){
+    Serial.println("APP");
+  }
   //TODO
 }
 
@@ -380,26 +388,28 @@ void setup() {
   //interrupt when button Mode is clicked, it is used to set the initial parameter for the next Mode
   pinMode(bt2, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(bt1), transictionMode, CHANGE);
+
+  pinMode(PIN_BLUETOOTH,INPUT); // declaration of PIN BLUETOOTH
 }
 
 
 void loop() {
   //if controllo bluetooth
-  //if(1==1){ //pin bluetooth attivo --> vuol dire che telefono collegato
-    //readMessageBluetooth();
-    //Serial.print(ct.getDirectionX());
-    //condizioni
-  //}else{
-    //mode con controller 
+  if(digitalRead(PIN_BLUETOOTH)){ //pin bluetooth attivo --> vuol dire che telefono collegato
+    readMessageBluetooth();
+    
+    logStatus(1);
+  }else{
+    //Mode without APP 
     if(ct.getMode() == 1) freeMode(); //mode with motors disable
     if(ct.getMode() == 2) gyroMode(); //attraverso ML attiva e disattiva motori e curva 
     if(ct.getMode() == 3) joystickMode(ct.getDirectionY()); // utilizza joystick per muovere EXO 
     if(ct.getMode() == 5) calibrationMode(); // attraverso controller calibra i motori
-  //}
 
-  
-  ct.checkModeController();
-  logStatus(0);
+    ct.checkModeController();
+    logStatus(0);
+  }
+
 }
 
 

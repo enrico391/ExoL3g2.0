@@ -39,8 +39,9 @@ class Controller{
           delay(2000);
         }
         //if all 2 button is pressed update the mode in 5
-        if(digitalRead(bt2) == LOW && digitalRead(bt1) == LOW){
+        if(digitalRead(bt2) == LOW ){
           mode = 5;
+          manageLED(mode);
         }
       }
 
@@ -49,6 +50,7 @@ class Controller{
       inline int getMode(){
         return mode;
       }
+
 
       /// @brief update the led in controller
       /// @param mode 
@@ -75,7 +77,6 @@ class Controller{
           digitalWrite(LED2,HIGH);
           digitalWrite(LED3,HIGH);
         }
-
       }
 
       /// @brief print variable of controller 
