@@ -31,6 +31,8 @@ unsigned int tempo = 1;
 float xT = 0;
 // fattore scala per iniziare camminata con curve piccole
 float scala = 0;
+//fattore scala in orizzontale
+float scaleHori;
 
 
 //variables of speed, position and torque
@@ -43,6 +45,8 @@ float torqueKnee;
 
 //oggetto controller per ricevere info su controller mode
 Controller ct;
+
+
 
 
 /*
@@ -111,16 +115,18 @@ void joystickMode(byte direction){
     if(scala > 0) scala -= 0.001;
     
   }
-  xT++;
-  tempo = 1.5*xT;
   
+  tempo = 1.5*xT;
+  xT++;
+  scaleHori = 0.08;
 
-  sendToMotor(1,getCurveAnca(tempo,scala),10,2,2,2);
-  sendToMotor(2,getCurveGinocchio(tempo,scala),10,2,2,2);
+  sendToMotor(1,getCurveAnca(tempo ,scala, scaleHori),10,2,2,2);
+  sendToMotor(2,getCurveGinocchio(tempo ,scala, scaleHori),10,2,2,2);
 
-  Serial.print(getCurveGinocchio(tempo,scala));
+  Serial.print(getCurveGinocchio(tempo, scala, scaleHori));
   Serial.print(" ");
-  Serial.println(getCurveAnca(tempo,scala));
+  Serial.print(getCurveAnca(tempo ,scala, scaleHori));
+  delay(10);
 }
 
 
@@ -143,6 +149,7 @@ void gyroMode(){
   //calcolo del fattore c Machine Learning
   if(ml_calculator.motion(data))
   {
+    
     //abilità motori solo prima volta che entra dentro al ciclo, ogni volta che riparte da zero 
     if(xT == 0){
       enterMotorMode(1);
@@ -153,14 +160,17 @@ void gyroMode(){
     //aggiorna valori scala e tempo
     scala += 0.001;
     tempo = 1.5*xT;
+    scaleHori = 0.08;
     //print delle curve
-    Serial.print(getCurveGinocchio(tempo,scala));
+    Serial.print(getCurveGinocchio(tempo, scala, scaleHori));
     Serial.print(" ");
-    Serial.print(getCurveAnca(tempo,scala));
+    Serial.print(getCurveAnca(tempo, scala, scaleHori));
     Serial.print(" ");
     //send position to the motors 
-    sendToMotor(1,getCurveAnca(tempo,scala),10,2,2,2);
-    sendToMotor(2,getCurveGinocchio(tempo,scala),10,2,2,2);
+    sendToMotor(1,getCurveAnca(tempo, scala, scaleHori),10,2,2,2);
+    sendToMotor(2,getCurveGinocchio(tempo, scala, scaleHori),10,2,2,2);
+
+    //Serial.print(startPosition(xT));
     //incrementa x della funzione
     xT++;
   }
@@ -180,62 +190,6 @@ void gyroMode(){
   }
 }
 
-
-void gyroMode_Try(){
-  //ottiene valori da giroscopio
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-
-  //inserisce valori gyroscopio all'interno dell'array per utilizzarlo nell'algoritmo di ML
-  int data[4];
-  data[0] = a.acceleration.x;
-  data[1] = a.acceleration.y;
-  data[2] = g.gyro.x; 
-  Serial.print("Data ML : ");
-  Serial.print(ml_calculator.motion(data));
-  Serial.print("  ");
-
-  //calcolo del fattore c Machine Learning
-  if(ml_calculator.motion(data))
-  {
-    //abilità motori solo prima volta che entra dentro al ciclo, ogni volta che riparte da zero 
-    if(xT == 0){
-      enterMotorMode(1);
-      enterMotorMode(2);
-      //setZeroMotor(1);
-      //setZeroMotor(2);
-    }
-
-    //muovi motori secondo curva sinosoidale
-    //aggiorna valori scala e tempo
-    scala += 0.001;
-    tempo = 1.5*xT;
-    //print delle curve
-    Serial.print(getCurveGinocchio(tempo,scala));
-    Serial.print(" ");
-    Serial.print(getCurveAnca(tempo,scala));
-    Serial.print(" ");
-    //send position to the motors 
-    sendToMotor(1,getCurveAnca(tempo,scala),10,2,2,2);
-    sendToMotor(2,getCurveGinocchio(tempo,scala),10,2,2,2);
-    //incrementa x della funzione
-    xT++;
-  }
-  else
-  {
-    //fermo non fare nulla 
-    //disabilità motori
-    disableMotor(1);
-    disableMotor(2);
-    //funzione che resetta valori delle curve
-    resetValues(&scala, &tempo, &xT);
-    //due strade da prendere :
-    //1) disableMotor e una volta che c soddisfa condizione vera impostare 0 motor nella current pos; 
-    //2) quando c non soddisfa condizioni riportare motori su valore 0 preimpostato con una velocità ridotta per poi disabilitare motori
-
-    //TODO forse meglio prima strada per fattore comodità dal momento che una volta disabilitati i motori è possibile fare movimento libero
-  }
-}
 
 
 /// @brief mode to check the mode via bluetooth
@@ -291,12 +245,14 @@ void logStatus(int level){
     Serial.print(ct.getDirectionX());
     Serial.print("  Y direction : ");
     Serial.print(ct.getDirectionY());
-    Serial.println(" ");
+    
   } 
   //mode with APP
   if(level == 1){
-    Serial.println("APP");
+    Serial.print("APP");
   }
+
+  Serial.println(" ");
   //TODO
 }
 
@@ -343,9 +299,9 @@ void resetZeroPositionMotor(){
 /// @brief mode that set the initial parameter every time mode changed
 void transictionMode(){
   //when the button mode is clicked, check if the current mode is 1(gyroMode) and reset the values for the 2 mode(Joystick)
-  if(ct.getMode() == 1){
+  //if(ct.getMode() == 1){
     resetValues(&scala, &tempo, &xT);
-  }
+  //}
 }
 
 
@@ -407,6 +363,8 @@ void loop() {
     if(ct.getMode() == 5) calibrationMode(); // attraverso controller calibra i motori
 
     ct.checkModeController();
+
+    
     logStatus(0);
   }
 

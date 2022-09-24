@@ -103,11 +103,11 @@ class Controller{
         int val_y = analogRead(j_y);
 
         //map the values
-        val_x = map(val_x,0,1024,-1000,1000);
-        val_y = map(val_y,0,1024,-1000,1000);
+        val_x = map(val_x,0,1024,-500,500);
+        val_y = map(val_y,0,1024,-500,500);
 
         //cast the numbers
-        if(val_x>-500 && val_x<500){
+        if(val_x>-200 && val_x<200){
           val_x = 0;
         }
         if(val_y>-200 && val_y<200){
@@ -133,9 +133,9 @@ class Controller{
       /// @return 1 forward, 2 backward, 0 stop
       int getDirectionY(){
         int val_y = analogRead(j_y);
-        val_y = map(val_y,0,1024,-1000,1000);
+        val_y = map(val_y,0,1024,-500,500);
         //cast value
-        if(val_y>-500 && val_y<500){
+        if(val_y>-200 && val_y<200){
           val_y = 0;
         }
       
@@ -154,15 +154,15 @@ class Controller{
       /// @return 1 forward, 2 backward, 0 stop
       int getDirectionX(){
         int val_x = analogRead(j_x);
-        val_x = map(val_x,0,1024,-1000,1000);
+        val_x = map(val_x,0,1024,-500,500);
 
-        if(val_x>-500 && val_x<500){
+        if(val_x>-200 && val_x<200){
           val_x = 0;
         }
 
         if(val_x>200){
           return 1;
-        }else if(val_x<200){
+        }else if(val_x<-200){
           return 2;
         }else{
           return 0;
