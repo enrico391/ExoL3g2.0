@@ -43,6 +43,8 @@ float positionKnee;
 float torque;
 float torqueKnee;
 
+float id;
+
 //oggetto controller per ricevere info su controller mode
 Controller ct;
 
@@ -176,16 +178,21 @@ void gyroMode(){
   }
   else
   {
-    //fermo non fare nulla 
-    //disabilità motori
-    disableMotor(1);
-    disableMotor(2);
+    // return to home position        
+    if(getCurveAnca(tempo, scala, scaleHori) != 0) sendToMotor(1,0,5,2,2,2); // hip
+    if(getCurveGinocchio(tempo, scala, scaleHori) != 0) sendToMotor(2,0,5,2,2,2); // knee
+
+    //read values from Motors
+    
+    //disableMotor(1);
+    //disableMotor(2);
+    
     //funzione che resetta valori delle curve
     resetValues(&scala, &tempo, &xT);
+    
     //due strade da prendere :
     //1) disableMotor e una volta che c soddisfa condizione vera impostare 0 motor nella current pos; 
     //2) quando c non soddisfa condizioni riportare motori su valore 0 preimpostato con una velocità ridotta per poi disabilitare motori
-
     //TODO forse meglio prima strada per fattore comodità dal momento che una volta disabilitati i motori è possibile fare movimento libero
   }
 }

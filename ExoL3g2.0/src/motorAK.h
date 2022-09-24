@@ -187,7 +187,7 @@ void read_fromMotor(int& idMotor,float& positionCurrent, float& speedCurrent, fl
   if(mcp2515.readMessage(&msg) == MCP2515::ERROR_OK){
     /// unpack ints from can buffer ///
     idMotor = msg.data[0]; //id motor
-
+    
     int p_int = (msg.data[1]<<8)|msg.data[2]; //Motor position data
     int v_int = (msg.data[3]<<4)|(msg.data[4]>>4); // Motor speed data
     int i_int = ((msg.data[4]&0xF)<<8)|msg.data[5]; // Motor torque data

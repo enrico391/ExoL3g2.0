@@ -45,7 +45,8 @@ float getCurveGinocchio(float time, float scale, float scaleHori){
         return scale*(a_g[0] + a_g[1]*cos((scaleHori*time)*w_g)+ b_g[0]*sin((scaleHori*time)*w_g) + a_g[2]*cos(2*(scaleHori*time)*w_g) + b_g[1]*sin(2*(scaleHori*time)*w_g));
     }else{
         return (a_g[0] + a_g[1]*cos((scaleHori*time)*w_g)+ b_g[0]*sin((scaleHori*time)*w_g) + a_g[2]*cos(2*(scaleHori*time)*w_g) + b_g[1]*sin(2*(scaleHori*time)*w_g));
-    }}
+    }
+}
 
 
 
