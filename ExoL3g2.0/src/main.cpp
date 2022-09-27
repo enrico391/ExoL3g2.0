@@ -1,5 +1,5 @@
 #define PIN_BLUETOOTH 33
-
+#include <iostream>
 #include <Arduino.h>
 #include <SPI.h>
 #include <mcp2515.h>
@@ -36,17 +36,23 @@ float scaleHori;
 
 
 //variables of speed, position and torque
-float speed;
+float speed = 0;
 float speedKnee;
 float position;
 float positionKnee;
 float torque;
 float torqueKnee;
 
+
 float id;
 
 //oggetto controller per ricevere info su controller mode
 Controller ct;
+
+//variables for App control
+byte modeBluetooth;
+int speedBluetooth;
+
 
 
 
@@ -135,6 +141,8 @@ void joystickMode(byte direction){
 
 // mode with gyroscope
 void gyroMode(){
+
+  digitalWrite(37,HIGH);
   //ottiene valori da giroscopio
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
@@ -224,19 +232,42 @@ void PIDmode(int posHip, int posKnee){
 }
 
 
-//send messages to app
-void writeBluetooth(String message){
+/// @brief convert speed and mode into a message to send to App 
+void writeBluetooth(){
+  //int messageToSend = (speed << 3) /*+ mode*/ ;
+}
+
+/// @brief function to get the Mode selected in the App
+/// @param message message come from the App
+/// @return current mode
+int getModeApp(String message){
+  int32_t n = message.toInt();
+
+  return n - ((n >> 3) << 3);
+}
+
+/// @brief function to get the Speed selected in App
+/// @return 
+int getSpeedApp(String message){
+  int32_t n = message.toInt();
   
+  return ((n - (n >> 9) << 9 )) - (getModeApp(message) >> 3);
+
 }
 
 
-//read messages from App
-String readMessageBluetooth(){
+
+
+/// @brief function to readMessage from Serial and put values into variables
+void readMessageBluetooth(){
   if(Serial8.available()){
-    //String mode = Serial2.read();
+    String message = Serial2.read(); // valore letto da app
+    
+    modeBluetooth = getModeApp(message);
+    speedBluetooth = getSpeedApp(message);
   }
-  //return byte ;
-  return " ";
+
+
 }
 
 
@@ -256,7 +287,12 @@ void logStatus(int level){
   } 
   //mode with APP
   if(level == 1){
-    Serial.print("APP");
+    Serial.print("APP>>");
+    Serial.print(" Mode: ");
+    Serial.print(modeBluetooth);
+    Serial.print(" , Speed: ");
+    Serial.print(speedBluetooth);
+
   }
 
   Serial.println(" ");
@@ -353,15 +389,25 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(bt1), transictionMode, CHANGE);
 
   pinMode(PIN_BLUETOOTH,INPUT); // declaration of PIN BLUETOOTH
+
+  pinMode(37,OUTPUT);//pin scritta EXO
 }
 
 
 void loop() {
   //if controllo bluetooth
   if(digitalRead(PIN_BLUETOOTH)){ //pin bluetooth attivo --> vuol dire che telefono collegato
+
+    //this function read message from Serial and write the values in variables : modeBluetooth and speedBluetooth; 
     readMessageBluetooth();
+
+    if(modeBluetooth == 1) freeMode(); //mode with motors disable
+    if(modeBluetooth == 2) gyroMode(); //attraverso ML attiva e disattiva motori e curva 
+    if(modeBluetooth == 3) joystickMode(ct.getDirectionY()); // utilizza joystick per muovere EXO 
+    if(modeBluetooth == 5) calibrationMode(); // attraverso controller calibra i motori
     
     logStatus(1);
+
   }else{
     //Mode without APP 
     if(ct.getMode() == 1) freeMode(); //mode with motors disable
@@ -370,11 +416,10 @@ void loop() {
     if(ct.getMode() == 5) calibrationMode(); // attraverso controller calibra i motori
 
     ct.checkModeController();
-
     
     logStatus(0);
   }
 
 }
 
-
+      
