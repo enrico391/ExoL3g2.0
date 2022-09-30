@@ -3,8 +3,8 @@
 class Controller{
     private:
       #define LED1 9
-      #define LED2 11
-      #define LED3 12
+      #define LED2 24 // 11
+      #define LED3 25 // 12
       #define bt1 2
       #define bt2 3
       #define j_y 15 //analogPin
