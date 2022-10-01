@@ -43,7 +43,7 @@ float positionKnee;
 float torque;
 float torqueKnee;
 
-int current_ID;
+long unsigned int current_ID;
 
 
 float id;
@@ -113,6 +113,16 @@ float readMotorValues(){
     Serial.print("  Torque motore Ginocchio : ");
     Serial.print(torque);
   }
+  else {
+    Serial.print("ID : "); Serial.print(current_ID); Serial.print("  Posizione : "); 
+    Serial.print(position);
+    Serial.print("  Speed motor Ginocchio : ");
+    Serial.print(speed);
+    Serial.print("  Torque motore Ginocchio : ");
+    Serial.print(torque);
+  }
+
+
   
 }
 
@@ -159,8 +169,8 @@ void joystickMode(byte direction){
   xT++;
   scaleHori = 0.08;
 
-  sendToMotor(0x001,10*degreeToRadiant(getCurveAnca(tempo ,scala, scaleHori)),1, 1, 1, 1);
-  sendToMotor(0x002,10*degreeToRadiant(getCurveGinocchio(tempo ,scala, scaleHori)),1, 1, 1, 1);
+  sendToMotor(0x001,10*degreeToRadiant(getCurveAnca(tempo ,scala, scaleHori)),0, 2, 1, 0); 
+  sendToMotor(0x002,10*degreeToRadiant(getCurveGinocchio(tempo ,scala, scaleHori)),0, 2, 1, 0); 
 
   Serial.print(10* degreeToRadiant(getCurveGinocchio(tempo, scala, scaleHori)));
   Serial.print(" ");
@@ -196,8 +206,8 @@ void gyroMode(){
     if(xT == 0){
       //enterMotorMode(0x001);
       //enterMotorMode(0x002);
-      //setZeroMotor(0x001);
-      //setZeroMotor(0x002);
+      setZeroMotor(0x001);
+      setZeroMotor(0x002);
     }
 
     //muovi motori secondo curva sinosoidale
@@ -206,13 +216,13 @@ void gyroMode(){
     tempo = 1.5*xT;
     scaleHori = 0.08;
     //print delle curve
-    Serial.print(10*degreeToRadiant(getCurveGinocchio(tempo, scala, scaleHori)));
+    Serial.print(2*degreeToRadiant(getCurveGinocchio(tempo, scala, scaleHori)));
     Serial.print(" ");
-    Serial.print(10*degreeToRadiant(getCurveAnca(tempo, scala, scaleHori)));
+    Serial.print(2*degreeToRadiant(getCurveAnca(tempo, scala, scaleHori)));
     Serial.print(" ");
     //send position to the motors 
-    sendToMotor(0x001, (5*degreeToRadiant(getCurveAnca(tempo, scala, scaleHori))), 2, 0.5, 0.5, 0);
-    sendToMotor(0x002, (5*degreeToRadiant(getCurveGinocchio(tempo, scala, scaleHori))), 0.1, 1.5, 1, 1);  // 2, 0.8, 1, 0);
+    sendToMotor(0x001, (2*degreeToRadiant(getCurveAnca(tempo, scala, scaleHori))), 0, 2, 1, 0); 
+    sendToMotor(0x002, (2*degreeToRadiant(getCurveGinocchio(tempo, scala, scaleHori))), 0, 2, 1, 0);  // 2, 0.8, 1, 0);
 
 
     //Serial.print(startPosition(xT));
@@ -227,8 +237,8 @@ void gyroMode(){
     //if(getCurveGinocchio(tempo, scala, scaleHori) != 0) sendToMotor(0x002, 0, 0.5, 0.5, 0.5, 0.5); // knee
 
 
-    sendToMotor(0x001, 0, 1, 1, 1, 1);
-    sendToMotor(0x002, 0, 0.2, 0.8, 3, 0);
+    sendToMotor(0x001, 0, 0, 1, 1, 0); 
+    sendToMotor(0x002, 0, 0, 1, 1, 0); 
     //read values from Motors
     
     //disableMotor(1);
@@ -252,22 +262,6 @@ void checkModeBluetooth(byte mode){
   if(mode == 1) freeMode();
   if(mode == 2) gyroMode();
   if(mode == 3); //;
-}
-
-
-// controllo motori con PID !!probabile non serva!!
-void PIDmode(int posHip, int posKnee){  
-  //TODO
-  PidControl pidHip;
-  PidControl pidKnee;
-
-  //calcolo PID
-  long currT = micros();
-  int speedKnee = pidKnee.calculate(currT, knee, posKnee); 
-  int speedHip = pidHip.calculate(currT, hip, posHip);
-
-  //DA RIVEDERE 
-  //controllo pid utilizzato in gyroMode, quando si stoppa x torna a 0 e...
 }
 
 
@@ -336,6 +330,19 @@ void logStatus(int level){
 
   }
 
+  //calibration mode
+  if(level == 2){
+    Serial.print("ID  ");
+    Serial.print(current_ID);
+    Serial.print("  Current position : ");
+    Serial.print(position);
+    Serial.print("  Speed : ");
+    Serial.print(speed);
+    Serial.print("  Torque : ");
+    Serial.print(torque);
+    
+  }
+
   Serial.println(" ");
   //TODO
 }
@@ -345,13 +352,15 @@ void logStatus(int level){
 void calibrationMode(){
   
   read_fromMotor(current_ID,position,speed,torque);
+
+
   //se id che riceve da messaggio CAN è 1 aggiorna pos motore 1                 
   if(current_ID == 1){
     if(ct.getDirectionX()){
-      sendToMotor(current_ID, degreeToRadiant(position+1), 10, 0, 0, 0); // ultimi 4 valori da testare
+      sendToMotor(current_ID, degreeToRadiant(position+1),0, 2, 1, 0); // ultimi 4 valori da testare
     }
     else if(ct.getDirectionX()==2){
-      sendToMotor(current_ID, degreeToRadiant(position-1), 10, 0, 0, 0); // ultimi 4 valori da testare
+      sendToMotor(current_ID, degreeToRadiant(position-1), 0, 2, 1, 0);  // ultimi 4 valori da testare
     }else{
       //nulla sta fermo
     }
@@ -360,10 +369,10 @@ void calibrationMode(){
   //se id che riceve da messaggio CAN è 2 aggiorna pos motore 2 
   if(current_ID == 2){
     if(ct.getDirectionY()){
-      sendToMotor(current_ID, degreeToRadiant(position+1), 0.10, 0, 0, 0); // ultimi 4 valori da testare
+      sendToMotor(current_ID, degreeToRadiant(position+1), 0, 2, 1, 0);  // ultimi 4 valori da testare
     }
     else if(ct.getDirectionY()==2){
-      sendToMotor(current_ID, degreeToRadiant(position-1), 0.10, 0, 0, 0); // ultimi 4 valori da testare
+      sendToMotor(current_ID, degreeToRadiant(position-1), 0, 2, 1, 0); // ultimi 4 valori da testare
     }else{
       //nulla sta fermo
     }
@@ -375,6 +384,9 @@ void calibrationMode(){
 void resetZeroPositionMotor(){
   //insert 0 position only if the current mode is calibrationMode
   if(ct.getMode() == 5){
+    sendToMotor(0x001,0,0, 2, 1, 0);
+    sendToMotor(0x002,0,0, 2, 1, 0);
+    delay(200);
     setZeroMotor(0x001);
     setZeroMotor(0x002);
   }
@@ -385,6 +397,10 @@ void transictionMode(){
   //when the button mode is clicked, check if the current mode is 1(gyroMode) and reset the values for the 2 mode(Joystick)
   //if(ct.getMode() == 1){
     resetValues(&scala, &tempo, &xT);
+
+    //return motors to zero position
+    sendToMotor(0x001,0,0, 2, 1, 0);
+    sendToMotor(0x002,0,0, 2, 1, 0);
   //}
 }
 
@@ -462,14 +478,19 @@ void loop() {
     if(ct.getMode() == 1) freeMode(); //mode with motors disable
     if(ct.getMode() == 2) gyroMode(); //attraverso ML attiva e disattiva motori e curva 
     if(ct.getMode() == 3) joystickMode(ct.getDirectionY()); // utilizza joystick per muovere EXO 
-    if(ct.getMode() == 5) calibrationMode(); // attraverso controller calibra i motori
+    if(ct.getMode() == 5) {
+      calibrationMode(); // attraverso controller calibra i motori
+      logStatus(2);
+    }
 
     ct.checkModeController();
     
-    logStatus(0);
+    
   }
 
   readMotorValues();
+
+  Serial.println();
 
 }
 

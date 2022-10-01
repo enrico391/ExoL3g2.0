@@ -137,11 +137,13 @@ void sendToMotor(int id, float pos, float speed, float kp, float kd, float torq)
 
 
 
-void read_fromMotor(int &id,float &pos, float &speed, float &torque){
+void read_fromMotor(long unsigned int &id,float &pos, float &speed, float &torque){
     byte len = 0;
-    byte buf[8];
-
-    CAN.readMsgBuf((unsigned int)&id,&len,buf);
+    byte buf[8] = {};
+    //unsigned char len = 0;
+    //unsigned char buf[8];
+    
+    CAN.readMsgBuf(&id,&len,buf);
 
     int Upos = (buf[1] << 8) | buf[2]; //Motor position data
     int Uspeed = (buf[3] << 4) | (buf[4] >> 4); // Motor speed data
