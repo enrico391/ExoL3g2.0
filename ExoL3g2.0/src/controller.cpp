@@ -52,6 +52,12 @@ class Controller{
       }
 
 
+      /// @brief setCurrentMode
+      inline void setMode(byte modeC){
+         mode = modeC;
+      }
+
+
       /// @brief update the led in controller
       /// @param mode 
       void manageLED(byte mode){
@@ -97,7 +103,7 @@ class Controller{
       /// @brief read the values from joystick and update the variable passed by address
       /// @param angleX angle of motor hip
       /// @param angleY angle of motor knee
-      void readJoystick(int *angleX, int *angleY){
+      void readJoystick(float &angleX, float &angleY){
         //read analog value in ESP is between 0 to 4095
         int val_x = analogRead(j_x);
         int val_y = analogRead(j_y);
@@ -116,16 +122,16 @@ class Controller{
 
         //update angles
         if(val_x>0){
-          *angleX++;
+          angleX += 0.05;
         }else if(val_x<0){
-          *angleX--;
+          angleX -= 0.05;
         }
 
         //update angles 
         if(val_y>0){
-          *angleY++;
+          angleY += 0.05;
         }else if(val_y<0){
-          *angleY--;
+          angleY -= 0.05;
         }
       }
 

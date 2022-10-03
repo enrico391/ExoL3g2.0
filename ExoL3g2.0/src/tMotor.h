@@ -75,7 +75,7 @@ void enterMotorMode(byte id){
 }
 
 
-void exitMotorMode(byte id ){
+void exitMotorMode(int id ){
     byte buf[8];
     buf[0] = 0xFF;
     buf[1] = 0xFF;
@@ -103,6 +103,8 @@ void setZeroMotor(byte id){
     buf[5] = 0xFF;
     buf[6] = 0xFF;
     buf[7] = 0xFE;
+
+    
 
     byte sndStat = CAN.sendMsgBuf(id, 0, 8, buf);
     
