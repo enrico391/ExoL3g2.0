@@ -58,8 +58,12 @@ Controller ct;
 byte modeBluetooth;
 int speedBluetooth;
 
+
+//variable to start motor every time the mode is changed in 1 
 bool startMotor = true;
 
+//message from APP
+String messageB;
 
 
 /*
@@ -95,6 +99,15 @@ void calibrationMode();
 //funzione per resettare valori per curve camminata
 void resetValues(float *scale, unsigned int *tempo, float *xT);
 */
+
+void gravityMode(){
+  read_fromMotor(current_ID,position,speed,torque);
+  float p_in = position;
+  float t_in = 10 * sin(position + 0.06) + 0.0;
+  Serial.println(torque);
+  sendToMotor(current_ID,p_in,0,1,2,t_in);
+}
+
 
 //function to read values of motor
 float readMotorValues(){
@@ -144,6 +157,8 @@ void freeMode(){
 
       startMotor = false;
     }
+    
+
     
     sendToMotor(0x001, 0, 0, 2, 0.8, 0);  
     sendToMotor(0x002, 0, 0, 2, 0.8, 0); 
@@ -215,8 +230,9 @@ void gyroMode(){
     //abilità motori solo prima volta che entra dentro al ciclo, ogni volta che riparte da zero 
     if(xT == 0){
       
-      //setZeroMotor(0x001);
-      //setZeroMotor(0x002);
+      enterMotorMode(0x001);
+      enterMotorMode(0x002);
+
       sendToMotor(0x001, 0, 0, 1, 1.2, 0); 
       sendToMotor(0x002, 0, 0, 1, 1.2, 0); 
     }
@@ -307,13 +323,16 @@ int getSpeedApp(String message){
 /// @brief function to readMessage from Serial and put values into variables
 void readMessageBluetooth(){
   if(Serial8.available()){
-    String message = Serial2.read(); // valore letto da app
-    
-    modeBluetooth = getModeApp(message);
-    speedBluetooth = getSpeedApp(message);
+    messageB = Serial8.read(); // valore letto da app
+    modeBluetooth = getModeApp(messageB);
+    speedBluetooth = getSpeedApp(messageB);
+
+
+    //reset all variables 
+    startMotor = true; // --> for start motor in 1 mode after mode 5  (mode 5 to 1 enable motors)
+    //funzione che resetta valori delle curve
+    resetValues(&scala, &tempo, &xT); 
   }
-
-
 }
 
 
@@ -334,6 +353,7 @@ void logStatus(int level){
   //mode with APP
   if(level == 1){
     Serial.print("APP>>");
+    Serial.print(messageB);
     Serial.print(" Mode: ");
     Serial.print(modeBluetooth);
     Serial.print(" , Speed: ");
@@ -343,15 +363,6 @@ void logStatus(int level){
 
   //calibration mode
   if(level == 2){
-    Serial.print("ID  ");
-    Serial.print(current_ID);
-    Serial.print("  Current position : ");
-    Serial.print(position);
-    Serial.print("  Speed : ");
-    Serial.print(speed);
-    Serial.print("  Torque : ");
-    Serial.print(torque);
-    
   }
 
   Serial.println(" ");
@@ -361,16 +372,14 @@ void logStatus(int level){
 
 // function to calibrate initial position
 void calibrationMode(){
-
-  if(ct.getMode() == 5){
-    ct.readJoystick(setPosHip,setPosKnee);
-
+  if(ct.getMode() == 5 || modeBluetooth == 5 ){
+    //ct.readJoystick(setPosHip,setPosKnee);
     //sendToMotor(0x001, degreeToRadiant(setPosHip),0, 2, 1, 0); // ultimi 4 valori da testare
     //sendToMotor(0x002, degreeToRadiant(setPosKnee), 0, 2, 1, 0);  // ultimi 4 valori da testare
+
     exitMotorMode(0x001);
     exitMotorMode(0x002);
 
-    //delay(200);
   }
 }
 
@@ -379,26 +388,21 @@ void calibrationMode(){
 void resetZeroPositionMotor(){
   //insert 0 position only if the current mode is calibrationMode
   if(ct.getMode() == 5){
+    /*
     resetValues(&scala, &tempo, &xT);
-
     //sendToMotor(0x001, degreeToRadiant(setPosHip),0, 2, 1, 0); // ultimi 4 valori da testare
     //sendToMotor(0x002, degreeToRadiant(setPosKnee), 0, 2, 1, 0);  // ultimi 4 valori da testare
-
     //delay(100);
     enterMotorMode(0x001);
     enterMotorMode(0x002);
-    
     setZeroMotor(0x001);
     setZeroMotor(0x002);
-    
-
     //imposta mode 1 e manageLED 1
-
     setPosHip = 0;
     setPosKnee = 0;
-
     ct.setMode(1);
     ct.manageLED(1);
+    */
   }
 }
 
@@ -423,18 +427,32 @@ void transictionSetMode(){
     resetValues(&scala, &tempo, &xT);
 
     //condition to avoid click of motors when mode change between 1 and 2
-    
     sendToMotor(0x001,0,0, 1, 1.2, 0); 
     sendToMotor(0x002,0,0, 1, 1.2, 0); 
 
-    startMotor = true;
+    //reset value FLAG for enable motors every time mode is changed in 1 
+    startMotor = true; // --> for start motor in 1 mode after mode 5  (mode 5 to 1 enable motors)
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ///////////////////////////////////////////////END///////////////////////////////////////////////////
 
 void setup() {
   Serial.begin(9600);
+  Serial8.begin(9600); // --> serial per bluetooth 
+
   //parte MPU 
   if (!mpu.begin()) {
     Serial.println("Failed to find MPU6050 chip");
@@ -456,7 +474,7 @@ void setup() {
   //TODO define pin led controller 
   //define serial
   
-  Serial8.begin(9600); // --> serial per bluetooth 
+  
 
   //init CAN shield
   checkCAN();
