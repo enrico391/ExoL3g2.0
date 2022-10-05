@@ -28,9 +28,9 @@ float w_g =0.04675 ;
 float getCurveAnca( float time,float scale, float scaleHori){
 
     if(scale<=1){
-        return scale*(a[0] + a[1]*cos((scaleHori*time)*w)+ b[0]*sin((scaleHori*time)*w) + a[2]*cos(2*(scaleHori*time)*w) + b[1]*sin(2*(scaleHori*time)*w));
+        return -1*(scale*(a[0] + a[1]*cos((scaleHori*time)*w)+ b[0]*sin((scaleHori*time)*w) + a[2]*cos(2*(scaleHori*time)*w) + b[1]*sin(2*(scaleHori*time)*w)));
     }else {
-        return a[0] + a[1]*cos((scaleHori*time)*w)+ b[0]*sin((scaleHori*time)*w) + a[2]*cos(2*(scaleHori*time)*w) + b[1]*sin(2*(scaleHori*time)*w);
+        return -1*(a[0] + a[1]*cos((scaleHori*time)*w)+ b[0]*sin((scaleHori*time)*w) + a[2]*cos(2*(scaleHori*time)*w) + b[1]*sin(2*(scaleHori*time)*w));
     }
 }
 
@@ -42,21 +42,23 @@ float getCurveAnca( float time,float scale, float scaleHori){
 /// @return angle for control motor
 float getCurveGinocchio(float time, float scale, float scaleHori){
     if(scale<=1){
-        return scale*(a_g[0] + a_g[1]*cos((scaleHori*time)*w_g)+ b_g[0]*sin((scaleHori*time)*w_g) + a_g[2]*cos(2*(scaleHori*time)*w_g) + b_g[1]*sin(2*(scaleHori*time)*w_g));
+        return -1*(scale*(a_g[0] + a_g[1]*cos((scaleHori*time)*w_g)+ b_g[0]*sin((scaleHori*time)*w_g) + a_g[2]*cos(2*(scaleHori*time)*w_g) + b_g[1]*sin(2*(scaleHori*time)*w_g)) + 5);
     }else{
-        return 0.5*(a_g[0] + a_g[1]*cos((scaleHori*time)*w_g)+ b_g[0]*sin((scaleHori*time)*w_g) + a_g[2]*cos(2*(scaleHori*time)*w_g) + b_g[1]*sin(2*(scaleHori*time)*w_g)) + 10;
+        return -1*(0.5*(a_g[0] + a_g[1]*cos((scaleHori*time)*w_g)+ b_g[0]*sin((scaleHori*time)*w_g) + a_g[2]*cos(2*(scaleHori*time)*w_g) + b_g[1]*sin(2*(scaleHori*time)*w_g)) + 5);
     }
 }
 
 
 
-/// @brief find the x position to start walking
-/// @param y the current pos of motor
-/// @return x value(time)
-float startPosition(float y, float scaleHori){
-    //y = scale*(a[0] + a[1]*cos((scaleHori*time)*w)+ b[0]*sin((scaleHori*time)*w) + a[2]*cos(2*(scaleHori*time)*w) + b[1]*sin(2*(scaleHori*time)*w));
-    
-    return (a[0] + a[1]*acos((scaleHori*y)*w)+ b[0]*asin((scaleHori*y)*w) + a[2]*acos(2*(scaleHori*y)*w) + b[1]*asin(2*(scaleHori*y)*w));
-}
-
+//
+//
+///// @brief find the x position to start walking
+///// @param y the current pos of motor
+///// @return x value(time)
+//float startPosition(float y, float scaleHori){
+//    //y = scale*(a[0] + a[1]*cos((scaleHori*time)*w)+ b[0]*sin((scaleHori*time)*w) + a[2]*cos(2*(scaleHori*time)*w) + b[1]*sin(2*(scaleHori*time)*w));
+//    
+//    return (a[0] + a[1]*acos((scaleHori*y)*w)+ b[0]*asin((scaleHori*y)*w) + a[2]*acos(2*(scaleHori*y)*w) + b[1]*asin(2*(scaleHori*y)*w));
+//}
+//
 
